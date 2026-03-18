@@ -1,0 +1,20 @@
+---
+import Layout from "../layouts/Layout.astro";
+import NotebookEmbed from "../components/NotebookEmbed.astro";
+---
+
+<Layout title="Observatory Overview">
+
+  <h1>Ethereum Observatory</h1>
+  <p>High-level network view</p>
+
+  <h2>📊 Network Health</h2>
+  <NotebookEmbed path="/notebooks/block_propagation" />
+
+  <h2>📦 Blob Demand</h2>
+  <NotebookEmbed path="/notebooks/blob_inclusion" />
+
+  <h2>⚙️ Pipeline</h2>
+  <NotebookEmbed path="/notebooks/mev_pipeline" />
+
+</Layout>
