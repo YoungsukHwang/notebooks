@@ -1,21 +1,15 @@
 ---
-import Layout from "../../layouts/BaseLayout.astro";
-import NotebookEmbed from "../../components/NotebookEmbed.astro";
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import DateNav from '@/components/DateNav.astro';
+import OverviewContent from '@/components/OverviewContent.astro';
+import { getLatestDate, getAvailableDates, getNotebooks } from '@/lib/data';
+
+const latestDate = getLatestDate();
+const availableDates = getAvailableDates();
+const notebooks = getNotebooks();
 ---
 
-
-<Layout title="Overview" date={new Date()}>
-
-  <h1>Ethereum Observatory</h1>
-  <p>High-level network view</p>
-
-  <h2>📊 Network Health</h2>
-  <NotebookEmbed path="/notebooks/block_propagation" />
-
-  <h2>📦 Blob Demand</h2>
-  <NotebookEmbed path="/notebooks/blob_inclusion" />
-
-  <h2>⚙️ Pipeline</h2>
-  <NotebookEmbed path="/notebooks/mev_pipeline" />
-
-</Layout>
+<BaseLayout title="Overview" description="Network health summary for the Ethereum P2P Observatory">
+  <DateNav slot="header" currentDate={latestDate} notebookId="overview" availableDates={availableDates} />
+  <OverviewContent date={latestDate} notebooks={notebooks} />
+</BaseLayout>
