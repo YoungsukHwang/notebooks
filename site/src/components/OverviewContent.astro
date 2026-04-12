@@ -137,36 +137,20 @@ const displayDate = new Date(date + 'T12:00:00Z').toLocaleDateString('en-US', {
 const DATA_BASE = '/data';
 
 /**
- * Read columns from a parquet file using hyparquet.
- * Returns an object mapping column names to arrays of values.
+ * Read rows from a parquet file using hyparquet.
+ * Returns array of objects with column names as keys.
  */
-async function readParquetColumns(date, filename, columns) {
+async function readParquet(date, filename, columns) {
   const url = `${DATA_BASE}/${date}/${filename}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
   const buffer = await res.arrayBuffer();
 
-  const { parquetRead } = await import('https://esm.sh/hyparquet@1.7.1');
+  const { parquetReadObjects } = await import(
+    'https://esm.sh/hyparquet'
+  );
 
-  return new Promise((resolve, reject) => {
-    try {
-      parquetRead({
-        file: buffer,
-        columns,
-        onComplete: (rows) => {
-          // rows is an array of arrays (one per row)
-          // Convert to column-oriented format
-          const out = {};
-          for (let ci = 0; ci < columns.length; ci++) {
-            out[columns[ci]] = rows.map(row => row[ci]);
-          }
-          resolve(out);
-        },
-      });
-    } catch (e) {
-      reject(e);
-    }
-  });
+  return await parquetReadObjects({ file: buffer, columns });
 }
 
 function setVal(id, text) {
@@ -184,8 +168,8 @@ function setColor(id, color) {
 
 async function loadBlobStats() {
   try {
-    const data = await readParquetColumns(date, 'blobs_per_slot.parquet', ['blob_count']);
-    const counts  = data['blob_count'];
+    const rows = await readParquet(date, 'blobs_per_slot.parquet', ['blob_count']);
+    const counts = rows.map(r => r.blob_count);
     const total   = counts.length;
     const missed  = counts.filter(v => v === 0 || v == null).length;
     const active  = counts.filter(v => v > 0);
@@ -217,21 +201,18 @@ async function loadBlobStats() {
 
 async function loadMempoolStats() {
   try {
-    // Try different possible column names
-    let data;
-    let col;
-    for (const colName of ['coverage_pct', 'visible_pct', 'coverage']) {
-      try {
-        data = await readParquetColumns(date, 'mempool_coverage.parquet', [colName]);
-        col = data[colName];
-        if (col && col.length > 0) break;
-      } catch { continue; }
-    }
-    if (!col || col.length === 0) throw new Error('no coverage column found');
+    const rows = await readParquet(
+      date, 'mempool_coverage.parquet',
+      ['total_txs', 'seen_in_mempool']
+    );
 
-    const values = col.filter(v => v != null).map(Number);
-    const avg    = values.reduce((a, b) => a + b, 0) / values.length;
-    const pct    = (avg > 1 ? avg : avg * 100).toFixed(1);
+    let totalTxs = 0;
+    let totalSeen = 0;
+    for (const r of rows) {
+      totalTxs  += Number(r.total_txs  || 0);
+      totalSeen += Number(r.seen_in_mempool || 0);
+    }
+    const pct = totalTxs > 0 ? ((totalSeen / totalTxs) * 100).toFixed(1) : '—';
 
     setVal('val-mempool', `${pct}%`);
     setSub('mempool', 'avg tx visibility pre-inclusion');
